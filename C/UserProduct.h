@@ -213,11 +213,11 @@ int main() {
         printf("Girisi basarili!\n");
 
         if (!checkIfUserExists(username)) {
-            addUserToDatabase(username, password);  // Hata mesajý vermeden kullanýcý ekleniyor
+            addUserToDatabase(username, password);  
         }
 
         for (int i = 0; i < productCount; i++) {
-            addProductToDatabase(&products[i]);  // Hata mesajý vermeden ürün ekleniyor
+            addProductToDatabase(&products[i]);  
         }
 
         displayProducts();
