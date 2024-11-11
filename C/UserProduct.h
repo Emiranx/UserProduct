@@ -6,7 +6,7 @@
 
 #define USERNAME_LENGTH 50
 #define PASSWORD_LENGTH 50
-#define MAX_USERS 10
+#define MAX_USERS 15
 #define MAX_PRODUCTS 10
 
 typedef struct {
@@ -102,22 +102,25 @@ int checkIfUserExists(const char* username) {
     if (rc == SQLITE_ROW) {
         int count = sqlite3_column_int(stmt, 0);
         sqlite3_finalize(stmt);
-        return count > 0;  
+        return count > 0;
     }
     else {
         sqlite3_finalize(stmt);
-        return 0; 
+        return 0;
     }
 }
 
-
 int addUserToDatabase(const char* username, const char* password) {
+    if (checkIfUserExists(username)) {
+        return 0;
+    }
+
     sqlite3_stmt* stmt;
     const char* sql = "INSERT INTO kullanicilar (username, password) VALUES (?, ?);";
 
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, 0);
     if (rc != SQLITE_OK) {
-        return 0; 
+        return 0;
     }
 
     sqlite3_bind_text(stmt, 1, username, -1, SQLITE_STATIC);
@@ -125,7 +128,7 @@ int addUserToDatabase(const char* username, const char* password) {
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
-    return rc == SQLITE_DONE ? 1 : 0; 
+    return rc == SQLITE_DONE ? 1 : 0;
 }
 
 int checkIfProductExists(const char* productName) {
@@ -134,7 +137,8 @@ int checkIfProductExists(const char* productName) {
 
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, 0);
     if (rc != SQLITE_OK) {
-        return 0; 
+        printf("Urun kontrol hatasi: %s\n", sqlite3_errmsg(db));
+        return 0;
     }
 
     sqlite3_bind_text(stmt, 1, productName, -1, SQLITE_STATIC);
@@ -143,17 +147,17 @@ int checkIfProductExists(const char* productName) {
     if (rc == SQLITE_ROW) {
         int count = sqlite3_column_int(stmt, 0);
         sqlite3_finalize(stmt);
-        return count > 0;  
+        return count > 0;
     }
     else {
         sqlite3_finalize(stmt);
-        return 0;  
+        return 0;
     }
 }
 
 int addProductToDatabase(const Product* product) {
     if (checkIfProductExists(product->productName)) {
-        return 0;  
+        return 0;
     }
 
     sqlite3_stmt* stmt;
@@ -161,15 +165,15 @@ int addProductToDatabase(const Product* product) {
 
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, 0);
     if (rc != SQLITE_OK) {
-        return 0; 
+        return 0;
     }
 
     sqlite3_bind_text(stmt, 1, product->productName, -1, SQLITE_STATIC);
-    sqlite3_bind_int(stmt, 2, (int)product->price); 
+    sqlite3_bind_double(stmt, 2, product->price);
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
-    return rc == SQLITE_DONE ? 1 : 0; 
+    return rc == SQLITE_DONE ? 1 : 0;
 }
 
 int authenticate(const char* username, const char* password) {
@@ -189,7 +193,10 @@ void displayProducts() {
 }
 
 int main() {
-    sqlite3_open("proje.db", &db);
+    if (sqlite3_open("proje.db", &db) != SQLITE_OK) {
+        printf("Veritabani acilamadi: %s\n", sqlite3_errmsg(db));
+        return 1;
+    }
     sqlite3_busy_timeout(db, 5000);
 
     loadUsersFromJSON("UserProduct.js");
@@ -203,18 +210,14 @@ int main() {
     scanf_s("%49s", password, (unsigned)_countof(password));
 
     if (authenticate(username, password)) {
-        printf("Giris basarili!\n");
+        printf("Girisi basarili!\n");
 
         if (!checkIfUserExists(username)) {
-            if (addUserToDatabase(username, password)) {
-            }
+            addUserToDatabase(username, password);  // Hata mesajý vermeden kullanýcý ekleniyor
         }
 
-     
         for (int i = 0; i < productCount; i++) {
-            if (addProductToDatabase(&products[i])) {
-             
-            }
+            addProductToDatabase(&products[i]);  // Hata mesajý vermeden ürün ekleniyor
         }
 
         displayProducts();
